@@ -104,6 +104,23 @@ class Catalog:
                 j += 1
         self.app.logger.info(f"Uploaded recommendations for {j} users")
 
+    def upload_hw(self, redis, recommendations_path="TRACKS_HW_PATH"):
+        recommendations_file_path = self.app.config[recommendations_path]
+
+        self.app.logger.info(
+            f"Uploading recommendations to redis from {recommendations_file_path}"
+        )
+
+        j = 0
+        with open(recommendations_file_path) as rf:
+            for line in rf:
+                recommendations = json.loads(line)
+                redis.set(
+                    recommendations["user"], self.to_bytes(recommendations["tracks"])
+                )
+                j += 1
+        self.app.logger.info(f"Uploaded recommendations for {j} users")
+
     def to_bytes(self, instance):
         return pickle.dumps(instance)
 

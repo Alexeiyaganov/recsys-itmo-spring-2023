@@ -16,6 +16,7 @@ from botify.recommenders.sticky_artist import StickyArtist
 from botify.recommenders.toppop import TopPop
 from botify.recommenders.indexed import Indexed
 from botify.recommenders.contextual import Contextual
+from botify.recommenders.hw1 import HW
 from botify.track import Catalog
 
 import numpy as np
@@ -33,6 +34,7 @@ tracks_with_diverse_recs_redis = Redis(app, config_prefix="REDIS_TRACKS_WITH_DIV
 artists_redis = Redis(app, config_prefix="REDIS_ARTIST")
 recommendations_redis = Redis(app, config_prefix="REDIS_RECOMMENDATIONS")
 recommendations_ub_redis = Redis(app, config_prefix="REDIS_RECOMMENDATIONS_UB")
+hw_redis = Redis(app, config_prefix="REDIS_HW")
 
 data_logger = DataLogger(app)
 
@@ -44,6 +46,8 @@ catalog.upload_tracks(tracks_redis.connection, tracks_with_diverse_recs_redis.co
 catalog.upload_artists(artists_redis.connection)
 catalog.upload_recommendations(recommendations_redis.connection)
 catalog.upload_recommendations(recommendations_ub_redis.connection, "RECOMMENDATIONS_UB_FILE_PATH")
+catalog.upload_hw(recommendations_redis.connection)
+catalog.upload_hw(hw_redis.connection, "TRACKS_HW_PATH")
 
 parser = reqparse.RequestParser()
 parser.add_argument("track", type=int, location="json", required=True)
@@ -74,7 +78,26 @@ class NextTrack(Resource):
         args = parser.parse_args()
 
         # TODO Seminar 6 step 6: Wire RECOMMENDERS A/B experiment
-        treatment = Experiments.RECOMMENDERS.assign(user)
+        # treatment = Experiments.RECOMMENDERS.assign(user)
+        # treatment = Experiments.STICKY_ARTIST.assign(user)
+        treatment = Experiments.HW.assign(user)
+        # if treatment == Treatment.T1:
+        #     recommender = StickyArtist(tracks_redis.connection, artists_redis.connection, catalog)
+        # elif treatment == Treatment.T2:
+        #     recommender = TopPop(tracks_redis.connection, catalog.top_tracks[:100])
+        # elif treatment == Treatment.T3:
+        #     recommender = Indexed(tracks_redis.connection, recommendations_ub_redis.connection, catalog)
+        # elif treatment == Treatment.T4:
+        #     recommender = Indexed(tracks_redis.connection, recommendations_redis.connection, catalog)
+        # elif treatment == Treatment.T5:
+        #     recommender = Contextual(tracks_redis.connection, catalog)
+        # elif treatment == Treatment.T6:
+        #     recommender = Contextual(tracks_with_diverse_recs_redis.connection, catalog)
+        # else:
+        #     recommender = Random(tracks_redis.connection)
+
+
+
         if treatment == Treatment.T1:
             recommender = StickyArtist(tracks_redis.connection, artists_redis.connection, catalog)
         elif treatment == Treatment.T2:
@@ -87,8 +110,12 @@ class NextTrack(Resource):
             recommender = Contextual(tracks_redis.connection, catalog)
         elif treatment == Treatment.T6:
             recommender = Contextual(tracks_with_diverse_recs_redis.connection, catalog)
+        elif treatment == Treatment.T7:
+            recommender = HW(tracks_redis.connection, hw_redis.connection, catalog)
         else:
-            recommender = Random(tracks_redis.connection)
+            recommender = Contextual(tracks_with_diverse_recs_redis.connection, catalog)
+            # recommender = Random(tracks_redis.connection)
+
 
         recommendation = recommender.recommend_next(user, args.track, args.time)
 
